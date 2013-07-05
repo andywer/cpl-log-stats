@@ -51,11 +51,17 @@
             // Create row in access_data_parsed
             
             $parsedDate = getdate( $event->getTimestamp() );
+            $urlData = $event->getUrlData();
             
             $this->insertAccessDataParsedStmt->execute(array(
                 'id'                => $eventId,
                 'day_of_week'       => $parsedDate['wday'],
                 'hour'              => $parsedDate['hours'],
+                'accessed_prof'     => $urlData->prof,
+                'accessed_time_from'=> $urlData->timeFrom,
+                'accessed_time_to'  => $urlData->timeTo,
+                'epoche_request'    => $urlData->epocheRequest,
+                'accessed_faculty'  => $urlData->faculty,
                 'referrer_domain'   => $event->getReferrerDomain(),
                 'referrer_se'       => $seReferrerData->engine,
                 'country'           => $event->getCountry(),
@@ -81,7 +87,9 @@
                 'time', 'ip', 'site', 'referrer'
             );
             $accessDataParsedCols = array(
-                'id', 'day_of_week', 'hour', 'referrer_domain', 'referrer_se',
+                'id', 'day_of_week', 'hour', 'accessed_prof',
+                'accessed_time_from', 'accessed_time_to', 'epoche_request',
+                'accessed_faculty', 'referrer_domain', 'referrer_se',
                 'country', 'ip_institution'
             );
             $accessDataSETermsCols = array(

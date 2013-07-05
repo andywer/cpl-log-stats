@@ -2,7 +2,7 @@
     class LogEvent {
         private $pdo, $id, $yetStored;
         private $timestamp, $ip, $url, $referrer;
-        private $country, $seReferrerData;
+        private $country, $requestedSiteData, $seReferrerData;
         
         private $insertAccessDataStmt, $insertAccessDataParsedStmt,
                 $insertSearchTermsStmt;
@@ -16,6 +16,19 @@
             $this->ip = self::ensureValidIP($ip);
             $this->url = $url;
             $this->referrer = $referrer;
+            
+            $parsed = new stdClass;
+            $parsed->prof = NULL;
+            $parsed->faculty = NULL;
+            $parsed->timeFrom = NULL;
+            $parsed->timeTo = NULL;
+            $parsed->epocheRequest = NULL;
+            $this->requestedSiteData = $parsed;
+            
+            $parsed = new stdClass;
+            $parsed->engine = NULL;
+            $parsed->terms = array();
+            $this->seReferrerData = $parsed;
         }
         
         function getId () {
@@ -61,16 +74,37 @@
             $this->country = $controller->getCountryByIP($this->ip);
         }
         
+        function getUrlData () {
+            return $this->requestedSiteData;
+        }
+        
         /// @return stdClass:{ engine: "google|...", terms: Array }
         function getSEReferrerData () {
             return $this->seReferrerData;
         }
         
+        function parseSiteUrl () {
+            $parsed = $this->requestedSiteData;
+            if(preg_match('/\/unigeschichte\/professorenkatalog\/leipzig\/([^\/]+)/', $this->url, $matches)) {
+                $id = preg_replace('/\.html$/', '', $matches[1]);
+                $parsed->prof = $id;
+            } else if(preg_match('/\/unigeschichte\/professorenkatalog\/fak\/([^\/]+)/', $this->url, $matches)) {
+                $parsed->faculty = $matches[1];
+            } else if(preg_match('/\/unigeschichte\/professorenkatalog\/(epoche|Zeitraum)\/([^\/]+)/', $this->url, $matches)) {
+                $period = $matches[2];
+                $x = strpos($period, '-');
+                $timeFrom = intval(substr($period, 0, $x));
+                $timeTo   = intval(substr($period, $x+1));
+                if($timeFrom > 1000 && $timeTo > 1000) {
+                    $parsed->timeFrom = $timeFrom;
+                    $parsed->timeTo = $timeTo;
+                    $parsed->epocheRequest = strtolower($matches[1])=="epoche" ? true : false;
+                }
+            }
+        }
+        
         function parseReferrerData () {
-            $parsed = new stdClass;
-            $parsed->engine = NULL;
-            $parsed->terms = array();
-            
+            $parsed = $this->seReferrerData;
             if(preg_match('/[\/\.]google\.[a-z]+ .* [\?&]q=([^&]+)$/ix', $this->referrer, $matches)) {
                 $parsed->engine = "google";
                 $queryString = urldecode($matches[1]);
@@ -90,8 +124,6 @@
                 }
                 $parsed->terms = $searchTerms;
             }
-            
-            $this->seReferrerData = $parsed;
         }
         
         

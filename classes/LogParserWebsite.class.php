@@ -1,18 +1,12 @@
 <?php
     class LogParserWebsite extends AbstractLogParser {
-        private $controller;
         private $selectStmt;
 
         
         function __construct (PDO $pdo) {
             parent::__construct($pdo);
-            $this->controller = new LogEventController($pdo);
         }
         
-        
-        function clearParsedData () {
-            $this->controller->removeAll();
-        }
         
         /**
          *  @param {tableName}
@@ -40,6 +34,7 @@
                         $row['referrer']
                     );
                     $event->lookupCountry($this->controller);
+                    $event->parseSiteUrl();
                     $event->parseReferrerData();
                     $this->controller->store($event);
                 } catch(PDOException $e) {
@@ -66,10 +61,6 @@
                          ? "WHERE time > '$minTime'"
                          : "" ;
             $this->selectStmt = $this->pdo->prepare("SELECT * FROM $tableName $whereClause ORDER BY time ASC");
-        }
-        
-        private function getParsedMaxTimestamp () {
-            $stmt = $this->pdo->prepare("SELECT max(time) FROM access_data");
         }
     }
 ?>

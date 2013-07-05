@@ -20,7 +20,7 @@
             echo "  CLEAR       Wipe all data created by this script from the database\n";
         } else if(strcasecmp($cmd, "clear") == 0) {
             echo "Clearing tables...\n";
-            $parser->clearParsedData();
+            $parser->getController()->removeAll();
         } else {
             die("Unknown command: $cmd\n");
         }

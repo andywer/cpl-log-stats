@@ -1,14 +1,19 @@
 <?php
     abstract class AbstractLogParser {
-        protected $pdo;
+        protected $pdo, $controller;
         
         function __construct (PDO $pdo) {
             $this->pdo = $pdo;
+            $this->controller = new LogEventController($pdo);
         }
         
-        abstract function clearParsedData ();
         abstract function parse ($tableName);
         
+        
+        /// @return Instance of LogEventController.
+        function getController () {
+            return $this->controller;
+        }
         
         /// @return stdClass:{ engine: "google|...", terms: Array }
         function parseSearchEngineReferrer ($referrer) {
