@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS `access_data_parsed` (
     accessed_prof   VARCHAR(40) DEFAULT NULL,
     
     -- Used URLs: /unigeschichte/professorenkatalog/epoche/... & /unigeschichte/professorenkatalog/Zeitraum/...
-    accessed_time_from  TINYINT DEFAULT NULL,
-    accessed_time_to    TINYINT DEFAULT NULL,
+    accessed_time_from  SMALLINT DEFAULT NULL,
+    accessed_time_to    SMALLINT DEFAULT NULL,
     epoche_request      BOOLEAN DEFAULT FALSE,
     
     -- Format: Id as used in URL: /unigeschichte/professorenkatalog/fak/<id>[/.*]
