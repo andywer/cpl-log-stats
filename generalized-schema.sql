@@ -12,6 +12,18 @@ CREATE TABLE IF NOT EXISTS `access_data_parsed` (
     id              BIGINT,
     day_of_week     TINYINT,    -- 0=Sunday, 1=Monday, ...
     hour            TINYINT,
+    
+    -- Format: Id as used in URL: /unigeschichte/professorenkatalog/leipzig/<id>[/|.html]
+    accessed_prof   VARCHAR(40) DEFAULT NULL,
+    
+    -- Used URLs: /unigeschichte/professorenkatalog/epoche/... & /unigeschichte/professorenkatalog/Zeitraum/...
+    accessed_time_from  TINYINT DEFAULT NULL,
+    accessed_time_to    TINYINT DEFAULT NULL,
+    epoche_request      BOOLEAN DEFAULT FALSE,
+    
+    -- Format: Id as used in URL: /unigeschichte/professorenkatalog/fak/<id>[/.*]
+    accessed_faculty    VARCHAR(30) DEFAULT NULL, -- Format: Is as used in URL
+    
     referrer_domain VARCHAR(50),
     referrer_se     ENUM('google') DEFAULT NULL,
     country         VARCHAR(2),
