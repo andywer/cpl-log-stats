@@ -27,10 +27,10 @@ CREATE TABLE IF NOT EXISTS `access_data_parsed` (
     referrer_domain VARCHAR(50),
     referrer_se     ENUM('google') DEFAULT NULL,
     country         VARCHAR(2),
-    ip_institution  VARCHAR(10),
     
     PRIMARY KEY (id),
-    FOREIGN KEY (id) REFERENCES access_data(id)
+    FOREIGN KEY (id) REFERENCES access_data(id),
+    INDEX (referrer_domain)
 ) ENGINE=MyISAM;
 
 CREATE TABLE IF NOT EXISTS `access_data_se_terms` (
