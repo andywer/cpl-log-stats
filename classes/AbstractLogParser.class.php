@@ -44,13 +44,6 @@
             return $parsed;
         }
         
-        protected function createInsertStatement ($tableName, $colNames) {
-            $_colNames = "(" . implode(', ', $colNames) . ")";
-            $_colValues = "(:" . implode(', :', $colNames) . ")";
-            
-            return $this->pdo->prepare("INSERT INTO `$tableName` $_colNames VALUES $_colValues");
-        }
-        
         /// @return Instance of DateTime.
         protected function parseSQLDateTime ($dateTimeStr) {
             return DateTime::createFromFormat("Y-m-d H:i:s", $dateTimeStr);

@@ -1,15 +1,22 @@
 <?php
     class LogEventController {
-        private $pdo;
-        private $selectMaxTime,
-                $insertAccessDataStmt, $deleteAccessDataStmt,
-                $insertAccessDataParsedStmt, $deleteAccessDataParsedStmt,
-                $insertSearchTermsStmt, $deleteSearchTermsStmt,
+        private $pdo, $nextAccessDataId;
+        private $selectMaxIdStmt,
+                $selectMaxTimeStmt,
+                $deleteAccessDataStmt,
+                $deleteAccessDataParsedStmt,
+                $deleteSearchTermsStmt,
                 $selectCountry2ByIpStmt;
+        
+        private $insertAccessDataQueue,
+                $insertAccessDataParsedQueue,
+                $insertSearchTermsQueue;
+        
         
         function __construct (PDO $pdo) {
             $this->pdo = $pdo;
             $this->setupStatements();
+            $this->nextAccessDataId = $this->getMaxId()+1;
         }
         
         
@@ -24,14 +31,13 @@
             
             // Create row in access_data
             
-            $this->pdo->beginTransaction();
-            $this->insertAccessDataStmt->execute(array(
+            $this->insertAccessDataQueue->queueInsertOperation(array(
                 'time'      => $event->getDateTimeStr(),
                 'ip'        => $event->getIP(),
                 'site'      => $event->getRequestedURL(),
                 'referrer'  => $event->getReferrer()
             ));
-            $eventId = $this->pdo->lastInsertId();
+            $eventId = $this->nextAccessDataId++;
             $event->setId($eventId);
             
             
@@ -40,7 +46,7 @@
             $seReferrerData = $event->getSEReferrerData();
             if($seReferrerData) {
                 foreach($seReferrerData->terms as $term) {
-                    $this->insertSearchTermsStmt->execute(array(
+                    $this->insertSearchTermsQueue->queueInsertOperation(array(
                         'id'    => $eventId,
                         'term'  => $term
                     ));
@@ -53,7 +59,7 @@
             $parsedDate = getdate( $event->getTimestamp() );
             $urlData = $event->getUrlData();
             
-            $this->insertAccessDataParsedStmt->execute(array(
+            $this->insertAccessDataParsedQueue->queueInsertOperation(array(
                 'id'                => $eventId,
                 'day_of_week'       => $parsedDate['wday'],
                 'hour'              => $parsedDate['hours'],
@@ -64,16 +70,25 @@
                 'accessed_faculty'  => $urlData->faculty,
                 'referrer_domain'   => $event->getReferrerDomain(),
                 'referrer_se'       => $seReferrerData->engine,
-                'country'           => $event->getCountry(),
-                'ip_institution'    => NULL
+                'country'           => $event->getCountry()
             ));
-            
-            $this->pdo->commit();
+        }
+        
+        function flushInsertBuffers () {
+            $this->insertAccessDataQueue->flush();
+            $this->insertAccessDataParsedQueue->flush();
+            $this->insertSearchTermsQueue->flush();
+        }
+        
+        function getMaxId () {
+            $this->selectMaxIdStmt->execute();
+            $row = $this->selectMaxIdStmt->fetch();
+            return $row[0];
         }
         
         function getMaxTimestamp () {
-            $this->selectMaxTime->execute();
-            $row = $this->selectMaxTime->fetch();
+            $this->selectMaxTimeStmt->execute();
+            $row = $this->selectMaxTimeStmt->fetch();
             return $row[0];
         }
         
@@ -90,22 +105,26 @@
                 'id', 'day_of_week', 'hour', 'accessed_prof',
                 'accessed_time_from', 'accessed_time_to', 'epoche_request',
                 'accessed_faculty', 'referrer_domain', 'referrer_se',
-                'country', 'ip_institution'
+                'country'
             );
             $accessDataSETermsCols = array(
                 'id', 'term'
             );
             
             
+            // Set up insert queues:
+            
+            $this->insertAccessDataQueue = new SQLInsertQueue($PDO, 'access_data', $accessDataCols);
+            $this->insertAccessDataParsedQueue = new SQLInsertQueue($PDO, 'access_data_parsed', $accessDataParsedCols);
+            $this->insertSearchTermsQueue = new SQLInsertQueue($PDO, 'access_data_se_terms', $accessDataSETermsCols);
+            
+            
             // Prepare statements
+            $this->selectMaxIdStmt = $PDO->prepare("SELECT max(id) FROM access_data");
+            $this->selectMaxTimeStmt = $PDO->prepare("SELECT max(time) FROM access_data");
             
-            $this->selectMaxTime = $PDO->prepare("SELECT max(time) FROM access_data");
-            
-            $this->insertAccessDataStmt = $this->createInsertStatement('access_data', $accessDataCols);
             $this->deleteAccessDataStmt = $PDO->prepare("DELETE FROM access_data");
-            $this->insertAccessDataParsedStmt = $this->createInsertStatement('access_data_parsed', $accessDataParsedCols);
             $this->deleteAccessDataParsedStmt = $PDO->prepare("DELETE FROM access_data_parsed");
-            $this->insertSearchTermsStmt = $this->createInsertStatement('access_data_se_terms', $accessDataSETermsCols);
             $this->deleteSearchTermsStmt = $PDO->prepare("DELETE FROM access_data_se_terms");
             
             $this->selectCountry2ByIpStmt = $PDO->prepare("SELECT country2 FROM ipv4_country WHERE start_ip <= :ip AND end_ip >= :ip");
@@ -124,6 +143,22 @@
             $_colNames = "(" . implode(', ', $colNames) . ")";
             $_colValues = "(:" . implode(', :', $colNames) . ")";
             
+            return $this->pdo->prepare("INSERT INTO `$tableName` $_colNames VALUES $_colValues");
+        }
+        
+        private function createBulkInsertStatement ($tableName, $colNames, $bulkSize) {
+            $_colNames = "(" . implode(', ', $colNames) . ")";
+            
+            $colValues = array();
+            for($i=0; $i<$bulkSize; $i++) {
+                $_values = array();
+                foreach($colNames as $colName) {
+                    array_push($_values, "{$colName}_{$i}");
+                }
+                array_push($colValues, "(:" . implode(', :', $_values) . ")");
+            }
+            
+            $_colValues = implode(', ', $colValues);
             return $this->pdo->prepare("INSERT INTO `$tableName` $_colNames VALUES $_colValues");
         }
     }

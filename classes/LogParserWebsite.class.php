@@ -49,6 +49,7 @@
                 $currentRowNo++;
             }
             
+            $this->controller->flushInsertBuffers();
             if($progressCallback) {
                 $progressCallback(1);
             }
