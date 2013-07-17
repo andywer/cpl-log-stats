@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS `access_data` (
     site            VARCHAR(300),
     referrer        VARCHAR(300),
     
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    INDEX(time)
 ) ENGINE=MyISAM;
 
 CREATE TABLE IF NOT EXISTS `access_data_parsed` (
